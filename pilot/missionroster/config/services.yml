@@ -1,0 +1,22 @@
+services:
+    pilot.missionroster.controller:
+        class: pilot\missionroster\controller\main
+        arguments:
+            - '@dbal.conn'
+            - '@template'
+            - '@controller.helper'
+            - '@request'
+            - '@user'
+            - '%core.table_prefix%'
+            - '@auth'
+
+    pilot.missionroster.listener:
+        class: pilot\missionroster\event\listener
+        arguments:
+            - '@controller.helper'
+            - '@dbal.conn'
+            - '@user'
+            - '@template'
+            - '%core.table_prefix%'
+        tags:
+            - { name: event.listener }

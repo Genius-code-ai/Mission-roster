@@ -1,0 +1,24 @@
+<div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:16px;">
+
+    <div id="missions-quicklink">
+        <a href="{{ path('pilot_mission_list') }}" title="Missions" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:inherit;">
+            <i class="icon fa-fighter-jet fa-fw" aria-hidden="true"></i>
+            <span>Missions</span>
+        </a>
+    </div>
+
+    {% if NEXT_MISSION_URL %}
+    <div id="next-mission-reminder" style="display:inline-flex;align-items:center;gap:6px;font-size:.85em;opacity:.85;">
+        <i class="icon fa-clock-o fa-fw" aria-hidden="true"></i>
+        <span>Prochaine mission :</span>
+        <a href="{{ NEXT_MISSION_URL }}" style="display:inline-flex;align-items:center;gap:5px;text-decoration:none;color:inherit;font-weight:500;">
+            <strong>{{ NEXT_MISSION_DATE }}</strong>
+            {% if NEXT_MISSION_TAG %}
+                <span style="background:rgba(255,255,255,.15);border-radius:3px;padding:1px 5px;font-size:.9em;">{{ NEXT_MISSION_TAG }}</span>
+            {% endif %}
+            <span>{{ NEXT_MISSION_TITRE }}</span>
+        </a>
+    </div>
+    {% endif %}
+
+</div>
