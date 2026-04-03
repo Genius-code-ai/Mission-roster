@@ -26,9 +26,8 @@ class listener implements EventSubscriberInterface
     {
         return [
             'core.permissions'                     => 'add_permissions',
-            'core.page_header'                     => 'add_next_mission',
+            'core.page_header'                     => 'add_next_mission_and_editor_button',
             'core.text_formatter_s9e_render_after' => 'on_s9e_render_after',
-            'core.posting_modify_template_vars'    => 'add_bbcode_editor_button',
         ];
     }
 
@@ -40,10 +39,21 @@ class listener implements EventSubscriberInterface
     {
         try {
             $text = isset($event['text']) ? $event['text'] : '';
-            if ($text === '' || strpos($text, '[roster=') === false) {
+            if ($text === '') {
                 return;
             }
-            $pattern  = '#\[roster=(\d+)\]#i';
+
+            // s9e peut encoder les crochets en entités HTML (&#91; &#93;)
+            // ou les laisser bruts selon la configuration du forum.
+            // On détecte les deux formes avant de lancer le preg_replace.
+            $has_raw     = strpos($text, '[roster=')    !== false;
+            $has_encoded = strpos($text, '&#91;roster=') !== false;
+            if (!$has_raw && !$has_encoded) {
+                return;
+            }
+
+            // Pattern robuste : accepte [ ou &#91; en ouverture, ] ou &#93; en fermeture
+            $pattern  = '#(?:\[|&#91;)roster=(\d+)(?:\]|&#93;)#i';
             $new_text = preg_replace_callback($pattern, function ($matches) {
                 $id = (int) $matches[1];
                 return $id > 0 ? $this->render_roster_block($id) : $this->render_error_placeholder();
@@ -279,45 +289,22 @@ class listener implements EventSubscriberInterface
 
     protected function render_error_placeholder()
     {
-        return '<div style="border:1px solid #fca5a5;background:#fef2f2;border-radius:6px;padding:10px 14px;color:#991b1b;font-size:.85rem;margin:8px 0;">'
-            . '⚠️ Mission introuvable ou ID invalide.</div>';
+        return '<div style="'
+            . 'display:flex;align-items:center;gap:10px;'
+            . 'border:1px solid #fca5a5;background:#fef2f2;'
+            . 'border-radius:8px;padding:12px 16px;margin:8px 0;'
+            . 'font-family:system-ui,sans-serif;font-size:.875rem;'
+            . '">'
+            . '<span style="font-size:1.4rem;line-height:1;flex-shrink:0;">⚠️</span>'
+            . '<div>'
+            .   '<strong style="color:#991b1b;display:block;margin-bottom:2px;">Mission introuvable</strong>'
+            .   '<span style="color:#b91c1c;font-size:.82rem;">Cette mission a été supprimée ou l\'identifiant est invalide.</span>'
+            . '</div>'
+            . '</div>';
     }
 
     // =========================================================================
-    // EV-02 — Bouton BBCode dans l'éditeur forum
-    // =========================================================================
-
-    public function add_bbcode_editor_button($event)
-    {
-        $now = time();
-        $result = $this->db->sql_query(
-            'SELECT id, titre, sim_tag, date_mission
-             FROM ' . $this->table_prefix . 'missions
-             WHERE date_mission >= ' . $now . '
-             ORDER BY date_mission ASC
-             LIMIT 20'
-        );
-        while ($row = $this->db->sql_fetchrow($result)) {
-            $this->template->assign_block_vars('roster_missions', [
-                'ID'    => (int) $row['id'],
-                'LABEL' => htmlspecialchars(
-                    '[' . trim($row['sim_tag'], '[]') . '] '
-                    . html_entity_decode($row['titre'], ENT_QUOTES, 'UTF-8')
-                    . ' — ' . $this->user->format_date($row['date_mission']),
-                    ENT_QUOTES, 'UTF-8'
-                ),
-            ]);
-        }
-        $this->db->sql_freeresult($result);
-
-        $this->template->assign_vars([
-            'S_ROSTER_BBCODE_BUTTON' => true,
-            'U_MISSION_LIST'         => $this->helper->route('pilot_mission_list'),
-        ]);
-    }
-
-    // =========================================================================
-    // Permissions + Navbar
+    // Permissions
     // =========================================================================
 
     public function add_permissions($event)
@@ -328,8 +315,13 @@ class listener implements EventSubscriberInterface
         $event['permissions'] = $permissions;
     }
 
-    public function add_next_mission($event)
+    // =========================================================================
+    // Navbar prochaine mission + bouton BBCode éditeur (page_header)
+    // =========================================================================
+
+    public function add_next_mission_and_editor_button($event)
     {
+        // ── Prochaine mission dans la navbar ─────────────────────────────────
         $now = time();
         $row = $this->db->sql_fetchrow($this->db->sql_query(
             'SELECT id, titre, sim_tag, date_mission
@@ -337,12 +329,57 @@ class listener implements EventSubscriberInterface
              WHERE date_mission >= ' . (int) $now . '
              ORDER BY date_mission ASC LIMIT 1'
         ));
-        if (!$row) { return; }
+        if ($row) {
+            $this->template->assign_vars([
+                'NEXT_MISSION_TITRE' => htmlspecialchars(html_entity_decode($row['titre'], ENT_QUOTES, 'UTF-8'), ENT_NOQUOTES, 'UTF-8'),
+                'NEXT_MISSION_TAG'   => htmlspecialchars(trim($row['sim_tag'], '[]'), ENT_NOQUOTES, 'UTF-8'),
+                'NEXT_MISSION_DATE'  => $this->user->format_date($row['date_mission']),
+                'NEXT_MISSION_URL'   => $this->helper->route('pilot_mission_view', ['id' => (int) $row['id']]),
+            ]);
+        }
+
+        // ── Bouton BBCode dans l'éditeur ─────────────────────────────────────
+        // Détection de la page posting (création ou édition de message)
+        // via le script PHP courant — fonctionne indépendamment de l'event template
+        $current_script = defined('PHP_SELF') ? PHP_SELF : (isset($_SERVER['PHP_SELF']) ? $_SERVER['PHP_SELF'] : '');
+        $is_posting_page = (
+            strpos($current_script, 'posting.php') !== false
+            || strpos($current_script, 'ucp.php')    !== false
+        );
+
+        if (!$is_posting_page) {
+            return;
+        }
+
+        // Charger les 20 prochaines missions pour le sélecteur rapide
+        try {
+            $result = $this->db->sql_query(
+                'SELECT id, titre, sim_tag, date_mission
+                 FROM ' . $this->table_prefix . 'missions
+                 WHERE date_mission >= ' . $now . '
+                 ORDER BY date_mission ASC
+                 LIMIT 20'
+            );
+            while ($mis = $this->db->sql_fetchrow($result)) {
+                $this->template->assign_block_vars('roster_missions', [
+                    'ID'    => (int) $mis['id'],
+                    'LABEL' => htmlspecialchars(
+                        '[' . trim($mis['sim_tag'], '[]') . '] '
+                        . html_entity_decode($mis['titre'], ENT_QUOTES, 'UTF-8')
+                        . ' — ' . $this->user->format_date($mis['date_mission']),
+                        ENT_QUOTES, 'UTF-8'
+                    ),
+                ]);
+            }
+            $this->db->sql_freeresult($result);
+        } catch (\Exception $e) {
+            // Table missions absente ou erreur SQL : on n'affiche pas le bouton
+            return;
+        }
+
         $this->template->assign_vars([
-            'NEXT_MISSION_TITRE' => htmlspecialchars(html_entity_decode($row['titre'], ENT_QUOTES, 'UTF-8'), ENT_NOQUOTES, 'UTF-8'),
-            'NEXT_MISSION_TAG'   => htmlspecialchars(trim($row['sim_tag'], '[]'), ENT_NOQUOTES, 'UTF-8'),
-            'NEXT_MISSION_DATE'  => $this->user->format_date($row['date_mission']),
-            'NEXT_MISSION_URL'   => $this->helper->route('pilot_mission_view', ['id' => (int) $row['id']]),
+            'S_ROSTER_BBCODE_BUTTON' => true,
+            'U_MISSION_LIST'         => $this->helper->route('pilot_mission_list'),
         ]);
     }
 }
