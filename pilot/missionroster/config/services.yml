@@ -17,6 +17,7 @@ services:
             - '@dbal.conn'
             - '@user'
             - '@template'
+            - '@auth'
             - '%core.table_prefix%'
         tags:
             - { name: event.listener }
