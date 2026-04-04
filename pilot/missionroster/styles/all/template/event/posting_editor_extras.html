@@ -1,0 +1,114 @@
+{% if S_ROSTER_BBCODE_BUTTON %}
+<style>
+.rmb-editor-panel{display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin-bottom:10px;font-family:system-ui,sans-serif;font-size:.875rem;}
+.rmb-editor-panel h4{margin:0 0 10px;font-size:.9rem;color:#1e293b;display:flex;align-items:center;gap:6px;}
+.rmb-editor-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;}
+.rmb-editor-field{display:flex;flex-direction:column;gap:3px;}
+.rmb-editor-field label{font-size:.78rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.04em;}
+.rmb-editor-select{padding:7px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:.85rem;background:#fff;min-width:320px;max-width:100%;}
+.rmb-editor-input{padding:7px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:.85rem;background:#fff;width:90px;text-align:center;}
+.rmb-editor-insert{padding:7px 16px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;transition:opacity .15s;}
+.rmb-editor-insert:hover{opacity:.85;}
+.rmb-editor-cancel{padding:7px 12px;background:#e2e8f0;color:#475569;border:none;border-radius:6px;font-size:.85rem;cursor:pointer;}
+.rmb-editor-sep{color:#94a3b8;font-size:.8rem;align-self:center;}
+.rmb-bbcode-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:#1e293b;color:#fbbf24 !important;border:1px solid #334155;border-radius:5px;font-size:.82rem;font-weight:700;cursor:pointer;text-decoration:none;transition:background .15s;margin-bottom:6px;}
+.rmb-bbcode-btn:hover{background:#334155;}
+</style>
+
+<!-- Bouton ✈ Roster dans la zone d'outils -->
+<div style="margin-bottom:4px;">
+  <button type="button" class="rmb-bbcode-btn" id="rmb-toggle-panel"
+          onclick="document.getElementById('rmb-editor-panel').style.display = document.getElementById('rmb-editor-panel').style.display === 'block' ? 'none' : 'block';">
+    ✈ Insérer un Roster
+  </button>
+</div>
+
+<!-- Panneau de sélection -->
+<div class="rmb-editor-panel" id="rmb-editor-panel">
+  <h4>✈ Insérer un bloc Roster dans le message</h4>
+  <div class="rmb-editor-row">
+
+    {% if roster_missions|length > 0 %}
+    <!-- Sélecteur missions à venir -->
+    <div class="rmb-editor-field">
+      <label>Mission à venir</label>
+      <select class="rmb-editor-select" id="rmb-mission-select" onchange="rmb_sync_id(this.value)">
+        <option value="">— Sélectionner une mission —</option>
+        {% for mis in roster_missions %}
+          <option value="{{ mis.ID }}">{{ mis.LABEL }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <span class="rmb-editor-sep">ou</span>
+    {% endif %}
+
+    <!-- Saisie manuelle de l'ID -->
+    <div class="rmb-editor-field">
+      <label>ID mission</label>
+      <input type="number" id="rmb-mission-id" class="rmb-editor-input"
+             placeholder="Ex: 42" min="1" />
+    </div>
+
+    <button type="button" class="rmb-editor-insert" onclick="rmb_insert()">
+      ↩ Insérer
+    </button>
+    <button type="button" class="rmb-editor-cancel"
+            onclick="document.getElementById('rmb-editor-panel').style.display='none'">
+      Annuler
+    </button>
+  </div>
+
+  <p style="margin:10px 0 0;font-size:.78rem;color:#94a3b8;">
+    Affichera le roster de la mission en lecture seule directement dans ce message.
+    Les lecteurs verront les slots, inscrits et pourront cliquer pour s'inscrire.
+    &nbsp;<a href="{{ U_MISSION_LIST }}" target="_blank" style="color:#3b82f6;">Voir toutes les missions →</a>
+  </p>
+</div>
+
+<script>
+(function(){
+  function rmb_sync_id(val){
+    var inp = document.getElementById('rmb-mission-id');
+    if(inp){ inp.value = val || ''; }
+  }
+  window.rmb_sync_id = rmb_sync_id;
+
+  window.rmb_insert = function(){
+    var inp = document.getElementById('rmb-mission-id');
+    var sel = document.getElementById('rmb-mission-select');
+    var id  = (inp && inp.value.trim()) ? inp.value.trim() : (sel ? sel.value : '');
+    if(!id || isNaN(parseInt(id,10)) || parseInt(id,10) <= 0){
+      alert('Veuillez saisir ou sélectionner un ID de mission valide.');
+      return;
+    }
+    var tag = '[roster=' + parseInt(id,10) + ']';
+
+    // Insertion dans la textarea phpBB (textarea#message ou #message-textarea)
+    var ta = document.getElementById('message') || document.getElementById('message-textarea') || document.querySelector('textarea[name="message"]');
+    if(ta){
+      var start = ta.selectionStart;
+      var end   = ta.selectionEnd;
+      ta.value  = ta.value.substring(0, start) + tag + ta.value.substring(end);
+      ta.selectionStart = ta.selectionEnd = start + tag.length;
+      ta.focus();
+    }
+
+    // Compatibilité WYSIWYG / éditeur riche phpBB (sceditor)
+    if(typeof sceditor !== 'undefined'){
+      try {
+        var inst = sceditor.instance(ta);
+        if(inst){ inst.insertText(tag); }
+      } catch(e){}
+    }
+
+    // Fermer le panneau
+    var panel = document.getElementById('rmb-editor-panel');
+    if(panel){ panel.style.display='none'; }
+
+    // Reset champs
+    if(inp){ inp.value = ''; }
+    if(sel){ sel.value = ''; }
+  };
+})();
+</script>
+{% endif %}

@@ -191,16 +191,12 @@ class listener implements EventSubscriberInterface
         $pct_init   = $total_max > 0 ? round($total_t / $total_max * 100) : 0;
         $bar_class  = ($total_t >= $total_max && $total_max > 0) ? ' rmbc-bar-full' : '';
         $widget_id  = 'rmbc-' . $mission_id;
-        // Utilise le format_date de phpBB pour respecter le fuseau de l'user
-        $now_time   = $this->user->format_date(time(), 'H:i');
-        // Récupérer le décalage (offset) pour le JavaScript
-        $user_offset = $this->user->timezone->getOffset(new \DateTime('now', new \DateTimeZone('UTC')));
+        $now_time   = date('H:i');
 
         // ── Assemblage ────────────────────────────────────────────────────────
         $html  = $this->get_card_css();
         $html .= '<div class="rmbc-wrap" id="' . $widget_id . '"'
             . ' data-mission-id="' . $mission_id . '"'
-            . ' data-timezone="' . (int) $user_offset . '"' // On passe le décalage ici
             . ' data-status-url="' . htmlspecialchars($url_status, ENT_COMPAT, 'UTF-8') . '">';
 
         $html .= '<div class="rmbc-header">'
@@ -292,7 +288,7 @@ class listener implements EventSubscriberInterface
 </style>';
     }
 
-/**
+    /**
      * Script AJAX — auto-refresh toutes les 60s + bouton manuel.
      * Injecté une seule fois par page.
      */
@@ -303,70 +299,33 @@ class listener implements EventSubscriberInterface
         $script_done = true;
         return '<script>
 (function(){
-    var INTERVAL = 60000;
-    function pad(n){ return n < 10 ? "0"+n : ""+n; }
-    
-    function update(wid, data){
-        if(!data || !data.slots) return;
-
-        var t=0, m=0;
-        data.slots.forEach(function(s){ 
-            t += parseInt(s.titulaires) || 0; 
-            m += parseInt(s.max || s.count) || 0; 
-        });
-
-        var pct = m > 0 ? Math.round(t/m*100) : 0;
-        var full = m > 0 && t >= m;
-        
-        var elRatio = document.getElementById(wid+"-ratio");
-        if(elRatio) elRatio.textContent = t + "/" + m;
-        
-        var elBar = document.getElementById(wid+"-bar");
-        if(elBar){ 
-            elBar.style.width = pct + "%"; 
-            elBar.className = "rmbc-bar" + (full ? " rmbc-bar-full" : ""); 
-        }
-        
-        var elTs = document.getElementById(wid+"-ts");
-        if(elTs){ 
-            var wrap = document.getElementById(wid);
-            // Récupération du décalage horaire envoyé par PHP
-            var offset = parseInt(wrap.getAttribute("data-timezone")) || 0;
-            
-            // Calcul de l heure basée sur l offset utilisateur
-            var now = new Date();
-            var utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-            var userDate = new Date(utc + (offset * 1000));
-
-            elTs.textContent = "Mis a jour a " + pad(userDate.getHours()) + ":" + pad(userDate.getMinutes()); 
-        }
-    }
-
-    window.rmbcRefresh = function(wid){
-        var wrap = document.getElementById(wid);
-        if(!wrap) return;
-        var url = wrap.getAttribute("data-status-url");
-        var lnk = wrap.querySelector(".rmbc-refresh-lnk");
-        
-        if(lnk) lnk.textContent = "...";
-
-        fetch(url, {credentials: "same-origin"})
-            .then(function(r){ return r.json(); })
-            .then(function(d){ 
-                update(wid, d); 
-                if(lnk) lnk.textContent = "Actualiser"; 
-            })
-            .catch(function(err){ 
-                console.error("Erreur Mission Roster:", err);
-                if(lnk) lnk.textContent = "Actualiser"; 
-            });
-    };
-
-    setInterval(function(){
-        document.querySelectorAll(".rmbc-wrap[data-mission-id]").forEach(function(w){ 
-            window.rmbcRefresh(w.id); 
-        });
-    }, INTERVAL);
+var INTERVAL = 60000;
+function pad(n){ return n < 10 ? "0"+n : ""+n; }
+function update(wid, data){
+    var t=0, m=0;
+    if(data && data.slots){ data.slots.forEach(function(s){ t+=s.titulaires||0; m+=s.max||0; }); }
+    var pct = m > 0 ? Math.round(t/m*100) : 0;
+    var full = m > 0 && t >= m;
+    var el;
+    el = document.getElementById(wid+"-ratio"); if(el) el.textContent = t+"/"+m;
+    el = document.getElementById(wid+"-bar");
+    if(el){ el.style.width=pct+"%"; el.className="rmbc-bar"+(full?" rmbc-bar-full":""); }
+    el = document.getElementById(wid+"-ts");
+    if(el){ var d=new Date(); el.textContent="Mis a jour a "+d.getHours()+":"+pad(d.getMinutes()); }
+}
+window.rmbcRefresh = function(wid){
+    var wrap = document.getElementById(wid); if(!wrap) return;
+    var url  = wrap.getAttribute("data-status-url"); if(!url) return;
+    var lnk  = wrap.querySelector(".rmbc-refresh-lnk"); if(lnk) lnk.textContent="...";
+    fetch(url,{credentials:"same-origin"})
+        .then(function(r){ return r.json(); })
+        .then(function(d){ update(wid,d); if(lnk) lnk.textContent="Actualiser"; })
+        .catch(function(){ if(lnk) lnk.textContent="Actualiser"; });
+};
+function autoAll(){
+    document.querySelectorAll(".rmbc-wrap[data-mission-id]").forEach(function(w){ window.rmbcRefresh(w.id); });
+}
+setInterval(autoAll, INTERVAL);
 })();
 </script>';
     }
