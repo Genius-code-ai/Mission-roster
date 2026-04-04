@@ -1,0 +1,72 @@
+pilot_mission_list:
+    path: /missions
+    defaults: { _controller: pilot.missionroster.controller:list_view }
+
+pilot_mission_create:
+    path: /mission/create
+    defaults: { _controller: pilot.missionroster.controller:create_view }
+
+pilot_mission_submit:
+    path: /mission/submit
+    defaults: { _controller: pilot.missionroster.controller:submit }
+    methods: [POST]
+
+pilot_mission_modify_view:
+    path: /mission/modify/{id}
+    defaults: { _controller: pilot.missionroster.controller:modify_view }
+
+pilot_mission_modify_submit:
+    path: /mission/modify-submit/{id}
+    defaults: { _controller: pilot.missionroster.controller:modify_submit }
+    methods: [POST]
+
+pilot_mission_edit:
+    path: /mission/edit/{id}
+    defaults: { _controller: pilot.missionroster.controller:edit_view }
+
+pilot_mission_update:
+    path: /mission/update/{id}
+    defaults: { _controller: pilot.missionroster.controller:update_mission }
+    methods: [POST]
+
+pilot_mission_join:
+    path: /mission/join/{id}
+    defaults: { _controller: pilot.missionroster.controller:join_mission }
+    methods: [POST]
+
+pilot_mission_leave:
+    path: /mission/leave/{id}
+    defaults: { _controller: pilot.missionroster.controller:leave_mission }
+
+pilot_mission_slots_status:
+    path: /mission/slots-status/{id}
+    defaults: { _controller: pilot.missionroster.controller:slots_status }
+    methods: [GET]
+
+pilot_mission_image:
+    path: /mission/image/{id}.png
+    defaults: { _controller: pilot.missionroster.controller:generate_image }
+
+pilot_roster_admin_add:
+    path: /mission/admin/add/{id}
+    defaults: { _controller: pilot.missionroster.controller:admin_roster_add }
+    methods: [POST]
+
+pilot_roster_admin_edit:
+    path: /mission/admin/edit/{id}
+    defaults: { _controller: pilot.missionroster.controller:admin_roster_edit }
+    methods: [POST]
+
+pilot_roster_admin_remove:
+    path: /mission/admin/remove/{id}
+    defaults: { _controller: pilot.missionroster.controller:admin_roster_remove }
+    methods: [POST]
+
+pilot_mission_cancel:
+    path: /mission/cancel/{id}
+    defaults: { _controller: pilot.missionroster.controller:cancel_mission }
+    methods: [POST]
+
+pilot_mission_view:
+    path: /mission/{id}
+    defaults: { _controller: pilot.missionroster.controller:view_mission }
