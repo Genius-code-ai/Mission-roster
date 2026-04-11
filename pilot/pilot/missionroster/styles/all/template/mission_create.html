@@ -1,0 +1,145 @@
+{% include 'overall_header.html' %}
+<style>
+.rm-wrap{max-width:720px;margin:24px auto;padding:0 16px;font-family:system-ui,sans-serif;}
+.rm-card{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1);padding:28px;}
+.rm-page-title{font-size:1.3rem;font-weight:700;color:#1e293b;margin:0 0 22px;}
+.rm-field{margin-bottom:16px;}
+.rm-label{display:block;font-size:.875rem;font-weight:500;color:#475569;margin-bottom:5px;}
+.rm-hint{font-size:.78rem;color:#94a3b8;font-weight:400;}
+.rm-input{width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:.875rem;color:#1e293b;background:#fff;box-sizing:border-box;outline:none;}
+.rm-input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15);}
+.rm-textarea{width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:.875rem;color:#1e293b;resize:vertical;min-height:80px;box-sizing:border-box;}
+.rm-dates-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.rm-section-title{font-size:.95rem;font-weight:700;color:#1e293b;margin:22px 0 12px;padding-bottom:8px;border-bottom:1px solid #e2e8f0;}
+.rm-slot-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+.rm-slot-row .rm-input{flex:1;}
+.rm-slot-count{width:90px!important;flex:none!important;}
+.rm-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:6px;font-size:.875rem;font-weight:500;border:none;cursor:pointer;text-decoration:none;transition:opacity .15s;}
+.rm-btn:hover{opacity:.85;}
+.rm-btn-primary{background:#3b82f6;color:#fff;}
+.rm-btn-add-slot{background:#f0fdf4;color:#166534;border:1px dashed #86efac;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:.875rem;margin-bottom:20px;display:inline-flex;align-items:center;gap:6px;}
+.rm-btn-rm{background:#fee2e2;color:#991b1b;padding:5px 10px;font-size:.8rem;border-radius:6px;border:none;cursor:pointer;}
+.rm-checkbox-row{display:flex;align-items:center;gap:8px;font-size:.875rem;color:#475569;cursor:pointer;margin-bottom:4px;}
+/* Groupes checkboxes */
+.rm-groups-list{display:flex;flex-direction:column;gap:6px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;}
+.rm-group-item{display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;background:#fff;border:1px solid #e2e8f0;}
+.rm-group-item.admin{background:#eff6ff;border-color:#bfdbfe;}
+.rm-group-item.guest{background:#f0fdf4;border-color:#bbf7d0;}
+.rm-group-item label{flex:1;font-size:.875rem;font-weight:500;color:#1e293b;cursor:pointer;margin:0;}
+.rm-group-item.admin label{color:#1d4ed8;cursor:not-allowed;}
+.rm-cb-green{width:18px;height:18px;accent-color:#22c55e;cursor:pointer;}
+.rm-cb-green:disabled{accent-color:#93c5fd;cursor:not-allowed;}
+.rm-lock{font-size:.75rem;color:#93c5fd;margin-left:4px;}
+</style>
+
+<div class="rm-wrap">
+  <div class="rm-card">
+    <h2 class="rm-page-title">➕ Créer une Mission</h2>
+    <form action="{{ U_SUBMIT }}" method="post">
+      {{ S_FORM_TOKEN }}
+
+      <div class="rm-field">
+        <label class="rm-label" for="sim_tag">Simulateur</label>
+        <select id="sim_tag" name="sim_tag" class="rm-select" required>
+          {% for sim in sims %}<option value="{{ sim.NAME }}">{{ sim.NAME }}</option>{% endfor %}
+        </select>
+      </div>
+
+      <div class="rm-field">
+        <label class="rm-label" for="titre">Titre de la mission</label>
+        <input id="titre" name="titre" type="text" class="rm-input" required placeholder="Ex: Opération Tempête" />
+      </div>
+
+      <div class="rm-field">
+        <label class="rm-label" for="description">Description <span class="rm-hint">(optionnel)</span></label>
+        <textarea id="description" name="description" class="rm-textarea" placeholder="Contexte, objectifs, consignes…"></textarea>
+      </div>
+
+      <div class="rm-dates-grid rm-field">
+        <div>
+          <label class="rm-label" for="date_mission">📅 Date de la mission</label>
+          <input id="date_mission" name="date_mission" type="datetime-local" class="rm-input" required />
+        </div>
+        <div>
+          <label class="rm-label" for="date_limite">⏰ Limite d'inscription <span class="rm-hint">(vide = date mission)</span></label>
+          <input id="date_limite" name="date_limite" type="datetime-local" class="rm-input" />
+        </div>
+      </div>
+
+      <div class="rm-field">
+        <label class="rm-label">Groupes autorisés à s'inscrire
+          <span class="rm-hint"> — les groupes admin 🔒 sont toujours autorisés</span>
+        </label>
+        <div class="rm-groups-list">
+          {% for group in glist %}
+          <div class="rm-group-item{% if group.IS_ADMIN %} admin{% elseif group.IS_GUESTS %} guest{% endif %}">
+            {% if group.IS_ADMIN %}
+              <input type="checkbox" class="rm-cb-green" checked="checked" disabled="disabled" />
+              <input type="hidden" name="allowed[]" value="{{ group.ID }}" />
+              <label>{{ group.NAME }} <span class="rm-lock">🔒 toujours autorisé</span></label>
+            {% else %}
+              <input type="checkbox" name="allowed[]" value="{{ group.ID }}" class="rm-cb-green"
+                     id="grp_{{ group.ID }}"
+                     {% if group.CHECKED %}checked="checked"{% endif %} />
+              <label for="grp_{{ group.ID }}">{{ group.NAME }}{% if group.IS_GUESTS %} <span class="rm-hint">(visiteurs)</span>{% endif %}</label>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        <p style="margin:6px 0 0;font-size:.78rem;color:#94a3b8;">
+          ✅ Case verte = groupe autorisé à s'inscrire. Décochez pour interdire l'accès à un groupe.
+        </p>
+      </div>
+
+      <div class="rm-field">
+        <label class="rm-checkbox-row">
+          <input type="checkbox" name="allow_p" value="1" checked />
+          Autoriser les inscriptions en tant que <strong>Probable</strong>
+        </label>
+      </div>
+
+      <div class="rm-section-title">⚙️ Slots</div>
+      <div id="slots-container"></div>
+      <button type="button" id="add-slot" class="rm-btn-add-slot">＋ Ajouter un groupe de slots</button>
+
+      <script>
+      // Heure par défaut 21:00 pour date_mission uniquement
+      (function(){
+        var dm = document.getElementById('date_mission');
+        if(dm && !dm.value){
+          var now = new Date();
+          var y = now.getFullYear();
+          var m = String(now.getMonth()+1).padStart(2,'0');
+          var d = String(now.getDate()).padStart(2,'0');
+          dm.value = y + '-' + m + '-' + d + 'T21:00';
+        }
+        // date_limite : pré-remplir avec date_mission seulement au clic
+        var dl = document.getElementById('date_limite');
+        if(dl){
+          dl.addEventListener('focus', function(){
+            if(!this.value && dm && dm.value){
+              this.value = dm.value;
+            }
+          });
+        }
+      })();
+      // Pas de synchronisation automatique sur change — l'utilisateur gère manuellement
+      document.getElementById('add-slot').addEventListener('click', function() {
+        var c = document.getElementById('slots-container');
+        var d = document.createElement('div');
+        d.className = 'rm-slot-row';
+        d.innerHTML = '<input name="g_name[]" type="text" placeholder="Nom du groupe" required class="rm-input" />'
+          + '<input name="g_count[]" type="number" placeholder="Places" min="1" required class="rm-input rm-slot-count" />'
+          + '<button type="button" class="rm-btn-rm">✖</button>';
+        c.appendChild(d);
+        d.querySelector('.rm-btn-rm').addEventListener('click', function() { c.removeChild(d); });
+      });
+      </script>
+
+      <button type="submit" class="rm-btn rm-btn-primary" style="width:100%;justify-content:center;padding:12px;margin-top:12px;">
+        ✔ Créer la mission
+      </button>
+    </form>
+  </div>
+</div>
+{% include 'overall_footer.html' %}

@@ -1,0 +1,102 @@
+{% include 'overall_header.html' %}
+<style>
+.rm-wrap{max-width:600px;margin:24px auto;padding:0 16px;font-family:system-ui,sans-serif;}
+.rm-card{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1);padding:28px;}
+.rm-page-title{font-size:1.2rem;font-weight:700;color:#1e293b;margin:0 0 6px;}
+.rm-field{margin-bottom:16px;}
+.rm-label{display:block;font-size:.875rem;font-weight:500;color:#475569;margin-bottom:5px;}
+.rm-select-input{width:100%;padding:9px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:.875rem;background:#fff;}
+.rm-select-input:disabled{background:#f1f5f9;color:#94a3b8;cursor:not-allowed;}
+.rm-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:6px;font-size:.875rem;font-weight:500;border:none;cursor:pointer;text-decoration:none;transition:opacity .15s;}
+.rm-btn:hover{opacity:.85;}
+.rm-btn-primary{background:#3b82f6;color:#fff;}
+.rm-btn-secondary{background:#e2e8f0;color:#1e293b;}
+.rm-btn-danger{background:#ef4444;color:#fff;}
+.rm-notice{background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:10px 14px;font-size:.85rem;color:#92400e;margin-bottom:16px;}
+.rm-current{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:10px 14px;font-size:.875rem;margin-bottom:16px;}
+</style>
+
+<div class="rm-wrap">
+  <div class="rm-card">
+    <h2 class="rm-page-title">✎ Modifier mon inscription</h2>
+    <p style="color:#64748b;font-size:.875rem;margin:0 0 16px;">Mission : <strong>{{ MISSION_TITLE }}</strong></p>
+
+    <div class="rm-current">
+      Inscription actuelle : groupe <strong>{{ CURRENT_SLOT }}</strong> — statut <strong>{{ CURRENT_STATUS }}</strong>
+    </div>
+
+    {% if not CAN_CHANGE_GROUP %}
+    <div class="rm-notice">
+      ⏰ La date limite d'inscription (<strong>{{ DATE_LIMITE_STR }}</strong>) est dépassée.
+      Vous ne pouvez plus changer de groupe, mais vous pouvez modifier votre statut.
+    </div>
+    {% endif %}
+
+    <form action="{{ U_MODIFY_SUBMIT }}" method="post">
+      {{ S_FORM_TOKEN }}
+
+      <div class="rm-field">
+        <label class="rm-label" for="slot_name">Groupe</label>
+        <select name="slot_name" id="slot_name" class="rm-select-input"{% if not CAN_CHANGE_GROUP %} disabled="disabled"{% endif %}>
+          {% for slot in slots %}
+          <option value="{{ slot.NAME }}" {{ slot.SELECTED }}>
+            {{ slot.NAME }} ({{ slot.COUNT_T }}/{{ slot.MAX }}){% if slot.S_FULL %} — COMPLET{% endif %}
+          </option>
+          {% endfor %}
+        </select>
+        {% if not CAN_CHANGE_GROUP %}
+          <input type="hidden" name="slot_name" value="{{ CURRENT_SLOT }}" />
+        {% endif %}
+      </div>
+
+      <div class="rm-field">
+        <label class="rm-label" for="status">Statut</label>
+        <select name="status" id="status" class="rm-select-input">
+          <option value="Titulaire"  {% if CURRENT_STATUS == 'Titulaire'  %}selected="selected"{% endif %}>Titulaire</option>
+          <option value="Reserviste" {% if CURRENT_STATUS == 'Reserviste' %}selected="selected"{% endif %}>Réserviste</option>
+          {% if ALLOW_P %}
+            <option value="Probable" {% if CURRENT_STATUS == 'Probable' %}selected="selected"{% endif %}>Probable</option>
+          {% endif %}
+        </select>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button type="submit" class="rm-btn rm-btn-primary">💾 Enregistrer</button>
+        <a href="{{ U_BACK }}" class="rm-btn rm-btn-secondary">✖ Annuler</a>
+        <a href="{{ U_LEAVE }}" class="rm-btn rm-btn-danger"
+           onclick="return confirm('Annuler définitivement votre inscription ?');">🗑 Se désinscrire</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  var slotsData = JSON.parse('{{ SLOTS_STATUS_JSON }}') || [], slotMap = {};
+  slotsData.forEach(function(s){ slotMap[s.name] = s; });
+  var selSlot   = document.getElementById('slot_name');
+  var selSt     = document.getElementById('status');
+  var optReserv = selSt ? selSt.querySelector('option[value="Reserviste"]') : null;
+  var optProb   = selSt ? selSt.querySelector('option[value="Probable"]')   : null;
+
+  function updateOpts() {
+    if (!selSt) return;
+    var slotName = selSlot && !selSlot.disabled ? selSlot.value : '{{ CURRENT_SLOT }}';
+    var s = slotMap[slotName];
+    if (!s) return;
+    // Réserviste et Probable : sélectionnables SEULEMENT si groupe complet
+    // Réserviste : seulement si groupe complet
+    if (optReserv) {
+      optReserv.disabled = !s.full;
+      if (!s.full && selSt.value === 'Reserviste') { selSt.value = 'Titulaire'; }
+    }
+    // Probable : toujours autorisé (géré par allow_probables côté serveur)
+    // Auto-switch si complet
+    if (s.full && selSt.value === 'Titulaire') { selSt.value = 'Reserviste'; }
+  }
+
+  if (selSlot && !selSlot.disabled) { selSlot.addEventListener('change', updateOpts); }
+  updateOpts();
+})();
+</script>
+{% include 'overall_footer.html' %}

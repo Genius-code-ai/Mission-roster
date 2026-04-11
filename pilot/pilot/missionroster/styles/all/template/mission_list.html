@@ -1,0 +1,77 @@
+{% include 'overall_header.html' %}
+<style>
+.rm-wrap{max-width:1020px;margin:24px auto;padding:0 16px;font-family:system-ui,sans-serif;color:#1e293b;}
+.rm-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:20px;}
+.rm-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;font-size:.875rem;font-weight:500;border:none;cursor:pointer;text-decoration:none;transition:opacity .15s;}
+.rm-btn:hover{opacity:.85;}
+.rm-btn-primary{background:#3b82f6;color:#fff;}
+.rm-btn-secondary{background:#e2e8f0;color:#1e293b;}
+.rm-btn-sm{padding:5px 10px;font-size:.8rem;}
+.rm-input{padding:8px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:.875rem;background:#fff;color:#1e293b;outline:none;}
+.rm-select{padding:7px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:.875rem;background:#fff;color:#1e293b;cursor:pointer;}
+.rm-card{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1);overflow:hidden;}
+.rm-table{width:100%;border-collapse:collapse;}
+.rm-table th{background:#f8fafc;padding:12px 16px;text-align:left;font-size:.78rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e2e8f0;}
+.rm-table td{padding:12px 16px;border-bottom:1px solid #f1f5f9;font-size:.875rem;vertical-align:middle;}
+.rm-table tr:last-child td{border-bottom:none;}
+.rm-table tr:hover td{background:#f8fafc;}
+.rm-table tr.past td{opacity:.5;}
+.rm-tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:700;background:#fef3c7;color:#92400e;letter-spacing:.03em;}
+.rm-sort-link{display:inline-flex;align-items:center;gap:4px;color:#64748b;text-decoration:none;font-weight:600;}
+.rm-sort-link:hover{color:#3b82f6;}
+.rm-sort-link.active{color:#3b82f6;}
+.rm-badge-past{display:inline-block;padding:1px 6px;border-radius:4px;font-size:.7rem;background:#f1f5f9;color:#94a3b8;margin-left:4px;}
+.rm-ratio{display:inline-block;font-weight:600;font-size:.85rem;color:#166534;background:#dcfce7;padding:2px 8px;border-radius:4px;}
+</style>
+
+<div class="rm-wrap">
+  <div class="rm-toolbar">
+    {% if S_CAN_CREATE %}
+      <a href="{{ U_CREATE }}" class="rm-btn rm-btn-primary">＋ Nouveau Roster</a>
+    {% endif %}
+    <form method="get" action="{{ U_LIST_BASE }}" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+      <input type="text" name="filter_tag" value="{{ FILTER_TAG }}" list="rm-tags-list" placeholder="Simulateur…" class="rm-input" style="width:155px;" />
+      <datalist id="rm-tags-list">
+        <option value="">Tous</option>
+        {% for tag in sim_tags %}<option value="{{ tag.VALUE }}">{{ tag.VALUE }}</option>{% endfor %}
+      </datalist>
+      <select name="show" class="rm-select">
+        <option value="future" {% if SHOW_CURRENT == 'future' %}selected="selected"{% endif %}>📅 À venir</option>
+        <option value="all"    {% if SHOW_CURRENT == 'all'    %}selected="selected"{% endif %}>🗂 Toutes</option>
+        <option value="past"   {% if SHOW_CURRENT == 'past'   %}selected="selected"{% endif %}>🕘 Passées</option>
+      </select>
+      <input type="hidden" name="sort"    value="{{ SORT_CURRENT }}" />
+      <input type="hidden" name="sort_by" value="{{ SORT_BY_CURRENT }}" />
+      <button type="submit" class="rm-btn rm-btn-secondary">Filtrer</button>
+      <a href="{{ U_LIST_BASE }}" class="rm-btn rm-btn-secondary">✖ Réinitialiser</a>
+    </form>
+  </div>
+
+  <div class="rm-card">
+    <table class="rm-table">
+      <thead><tr>
+        <th>Simulateur</th>
+        <th>Mission</th>
+        <th><a href="{{ U_SORT_DATE_TOGGLE }}" class="rm-sort-link{% if SORT_BY_CURRENT == 'date' %} active{% endif %}">Date {% if SORT_BY_CURRENT == 'date' %}{% if SORT_CURRENT == 'asc' %}▲{% else %}▼{% endif %}{% else %}↕{% endif %}</a></th>
+        <th><a href="{{ U_SORT_CREATOR_TOGGLE }}" class="rm-sort-link{% if SORT_BY_CURRENT == 'creator' %} active{% endif %}">Créateur {% if SORT_BY_CURRENT == 'creator' %}{% if SORT_CURRENT == 'asc' %}▲{% else %}▼{% endif %}{% else %}↕{% endif %}</a></th>
+        <th>Slots</th>
+        <th>Actions</th>
+      </tr></thead>
+      <tbody>
+        {% for mission in missions %}
+        <tr{% if mission.IS_PAST %} class="past"{% endif %}>
+          <td><span class="rm-tag">{{ mission.TAG }}</span>{% if mission.IS_PAST %}<span class="rm-badge-past">passée</span>{% endif %}</td>
+          <td><a href="{{ mission.U_VIEW }}" style="color:#3b82f6;text-decoration:none;font-weight:500;">{{ mission.TITRE }}</a></td>
+          <td style="white-space:nowrap;color:#64748b;">{{ mission.DATE }}</td>
+          <td style="color:#475569;">{{ mission.CREATOR }}</td>
+          <td><span class="rm-ratio">{{ mission.SLOTS_RATIO }}</span></td>
+          <td><a href="{{ mission.U_VIEW }}" class="rm-btn rm-btn-secondary rm-btn-sm">Voir</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:24px;">Aucune mission trouvée.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include 'overall_footer.html' %}
