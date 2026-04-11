@@ -29,9 +29,14 @@ id, sim_tag, titre, description, slots_config (JSON), allowed_groups, date_missi
 phpbb_mission_roster
 id, mission_id, user_id, slot_name, status, external_name (v201)
 
-Constantes modifiables
+Constantes modifiables (dans le fichier main)
 phpconst ROSTER_PURGE_MONTHS = 12;          // purge automatique
 const ALLOWED_TAGS = ['IL2','DCS','BMS','AUTRES'];  // tags simulateurs
+
+Constantes modifiables (dans le fichier listener du dossier event)
+            'S_DISPLAY_MISSION_LINK'          => true, // Afficher l'icône avion (Navbar)
+            'S_DISPLAY_NEXT_MISSION_REMINDER' => true, // Afficher le rappel (Top Right)
+Si on veut désactiver un de ces affichages, il faut le mettre en false
 
 Permissions ACP
 u_mission_create — Peut créer des missions
