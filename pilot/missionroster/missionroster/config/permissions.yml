@@ -1,4 +1,0 @@
-permissions:
-    u_mission_create:
-        lang: ACL_U_MISSION_CREATE
-        cat: misc
