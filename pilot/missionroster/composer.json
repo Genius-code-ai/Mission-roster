@@ -1,0 +1,23 @@
+{
+    "name": "pilot/missionroster",
+    "type": "phpbb-extension",
+    "description": "Roster Pro: Tags simulateurs, Slots, Réservistes avec promotion auto.",
+    "version": "1.9.1",
+    "license": "GPL-2.0-only",
+    "authors": [
+        {
+            "name": "Pilot",
+            "email": "pilot@example.com"
+        }
+    ],
+    "require": {
+        "phpbb/phpbb": ">=3.1.0",
+        "php": ">=7.2"
+    },
+    "extra": {
+        "display-name": "Mission Flight Roster Professional",
+        "soft-require": {
+            "phpbb/phpbb": ">=3.3.0"
+        }
+    }
+}
